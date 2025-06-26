@@ -57,11 +57,41 @@ export function AirDropForm() {
                 hash: approvalHash,
             })
 
-            // console.log("Approval confirmed:", approvalReceipt)
+            console.log("Approval confirmed:", approvalReceipt)
+
+            await writeContractAsync({
+                address: tsenderAddress as `0x${string}`,
+                abi: tsenderAbi,
+                functionName: "airdropERC20",
+                args: [
+                    tokenAddress as `0x${string}`,
+                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                    BigInt(totalAmount)
+                ]
+            })
+            setTokenAddress("");
+            setRecipients("");
+            setAmounts("");
 
         }
         else{
-            
+            console.log("Already approved enough amount, proceeding with airdrop...");
+            await writeContractAsync({
+                address: tsenderAddress as `0x${string}`,
+                abi: tsenderAbi,
+                functionName: "airdropERC20",
+                args: [
+                    tokenAddress as `0x${string}`,
+                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                    BigInt(totalAmount)
+                ]
+            })
+            setTokenAddress("");
+            setRecipients("");
+            setAmounts("");
+
         }
 
     }
