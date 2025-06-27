@@ -1,17 +1,19 @@
 "use client";
 import { chainsToTSender, erc20Abi, tsenderAbi } from "@/utils/constant";
 import { InputForm } from "./ui/InputForm";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, useConfig, useWriteContract, useWaitForTransactionReceipt, } from 'wagmi'
 import { readContract } from '@wagmi/core';
 import { calculateTotal } from "@/utils/calculateTotal/calculateTotal";
 import { waitForTransactionReceipt } from "@wagmi/core"
+import toast from "react-hot-toast";
 
 export function AirDropForm() {
 
     const [tokenAddress, setTokenAddress] = useState("");
     const [recipients, setRecipients] = useState("");
     const [amounts, setAmounts] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const chainId = useChainId();
     const config = useConfig()
     const account = useAccount()
@@ -35,64 +37,109 @@ export function AirDropForm() {
 
         return response as number;
 
+
     }
+
+     useEffect(() => {
+        const savedTokenAddress = localStorage.getItem('tokenAddress')
+        const savedRecipients = localStorage.getItem('recipients')
+        const savedAmounts = localStorage.getItem('amounts')
+
+        if (savedTokenAddress) setTokenAddress(savedTokenAddress)
+        if (savedRecipients) setRecipients(savedRecipients)
+        if (savedAmounts) setAmounts(savedAmounts)
+    }, [])
+
+    useEffect(() => {
+        localStorage.setItem('tokenAddress', tokenAddress)
+    }, [tokenAddress])
+
+    useEffect(() => {
+        localStorage.setItem('recipients', recipients)
+    }, [recipients])
+
+    useEffect(() => {
+        localStorage.setItem('amounts', amounts)
+    }, [amounts])
 
 
     async function handleSubmit() {
+        console.log("Submitting airdrop with the following details:");
+        console.log("Token Address:", tokenAddress);
+        console.log("Recipients:", recipients);
+        console.log("Amounts:", amounts);
+        if(!tokenAddress || !recipients || !amounts) {
+         
+            toast.error("Please fill in all fields before submitting.");
+          setIsLoading(false);
+            return;
+        }
+        setIsLoading(true);
         // tsenderAddress is the address of the T-Sender contract for the current chain
         const tsenderAddress = chainsToTSender[chainId]["tsender"];
         const approvedAmount = await getAppovedAmount(tsenderAddress);
         //  console.log("Approved Amount: ", approvedAmount);
+        try {
+            if (approvedAmount < totalAmount) {
 
-        if (approvedAmount < totalAmount) {
+                const approvalHash = await writeContractAsync({
+                    address: tokenAddress as `0x${string}`,
+                    abi: erc20Abi,
+                    functionName: "approve",
+                    args: [tsenderAddress as `0x${string}`, BigInt(totalAmount)],
+                })
 
-            const approvalHash = await writeContractAsync({
-                address: tokenAddress as `0x${string}`,
-                abi: erc20Abi,
-                functionName: "approve",
-                args: [tsenderAddress as `0x${string}`, BigInt(totalAmount)],
-            })
+                const approvalReceipt = await waitForTransactionReceipt(config, {
+                    hash: approvalHash,
+                })
 
-             const approvalReceipt = await waitForTransactionReceipt(config, {
-                hash: approvalHash,
-            })
+                console.log("Approval confirmed:", approvalReceipt)
 
-            console.log("Approval confirmed:", approvalReceipt)
+                await writeContractAsync({
+                    address: tsenderAddress as `0x${string}`,
+                    abi: tsenderAbi,
+                    functionName: "airdropERC20",
+                    args: [
+                        tokenAddress as `0x${string}`,
+                        recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                        amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                        BigInt(totalAmount)
+                    ]
+                })
+                setTokenAddress("");
+                setRecipients("");
+                setAmounts("");
+                setIsLoading(false);
+            }
+            else {
+                console.log("Already approved enough amount, proceeding with airdrop...");
+                await writeContractAsync({
+                    address: tsenderAddress as `0x${string}`,
+                    abi: tsenderAbi,
+                    functionName: "airdropERC20",
+                    args: [
+                        tokenAddress as `0x${string}`,
+                        recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                        amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                        BigInt(totalAmount)
+                    ]
+                })
+                setTokenAddress("");
+                setRecipients("");
+                setAmounts("");
+                setIsLoading(false);
 
-            await writeContractAsync({
-                address: tsenderAddress as `0x${string}`,
-                abi: tsenderAbi,
-                functionName: "airdropERC20",
-                args: [
-                    tokenAddress as `0x${string}`,
-                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
-                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
-                    BigInt(totalAmount)
-                ]
-            })
-            setTokenAddress("");
-            setRecipients("");
-            setAmounts("");
+            }
 
         }
-        else{
-            console.log("Already approved enough amount, proceeding with airdrop...");
-            await writeContractAsync({
-                address: tsenderAddress as `0x${string}`,
-                abi: tsenderAbi,
-                functionName: "airdropERC20",
-                args: [
-                    tokenAddress as `0x${string}`,
-                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
-                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
-                    BigInt(totalAmount)
-                ]
-            })
-            setTokenAddress("");
-            setRecipients("");
-            setAmounts("");
-
+        catch (error) {
+            console.log("Error fetching approved amount:", error);
+            setIsLoading(false);
         }
+        finally {
+            setIsLoading(false);
+        }
+
 
     }
 
@@ -121,9 +168,19 @@ export function AirDropForm() {
                 large={true}
             />
 
-            <button type="submit" className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-6 w-full mb-4">
-                Send Tokens
-            </button>
+            {
+                isLoading ? (
+                    <button type="button" className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-6 w-full mb-4">
+                        Processing.........
+                    </button>
+                )
+                    : (
+                        <button type="submit" className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-6 w-full mb-4">
+                            Send Tokens
+                        </button>
+                    )
+            }
+
         </form>
     )
 }
