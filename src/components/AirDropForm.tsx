@@ -7,6 +7,7 @@ import { readContract } from '@wagmi/core';
 import { calculateTotal } from "@/utils/calculateTotal/calculateTotal";
 import { waitForTransactionReceipt } from "@wagmi/core"
 import toast from "react-hot-toast";
+import { FaSpinner } from "react-icons/fa";
 
 export function AirDropForm() {
 
@@ -40,7 +41,7 @@ export function AirDropForm() {
 
     }
 
-     useEffect(() => {
+    useEffect(() => {
         const savedTokenAddress = localStorage.getItem('tokenAddress')
         const savedRecipients = localStorage.getItem('recipients')
         const savedAmounts = localStorage.getItem('amounts')
@@ -68,10 +69,10 @@ export function AirDropForm() {
         console.log("Token Address:", tokenAddress);
         console.log("Recipients:", recipients);
         console.log("Amounts:", amounts);
-        if(!tokenAddress || !recipients || !amounts) {
-         
+        if (!tokenAddress || !recipients || !amounts) {
+
             toast.error("Please fill in all fields before submitting.");
-          setIsLoading(false);
+            setIsLoading(false);
             return;
         }
         setIsLoading(true);
@@ -170,8 +171,12 @@ export function AirDropForm() {
 
             {
                 isLoading ? (
-                    <button type="button" className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-6 w-full mb-4">
-                        Processing.........
+                    <button
+                        type="button"
+                        className="bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mt-6 w-full mb-4 flex items-center justify-center gap-2"
+                    >
+                        <FaSpinner className="animate-spin" />
+                        Processing...
                     </button>
                 )
                     : (
