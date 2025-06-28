@@ -2,7 +2,7 @@
 import { chainsToTSender, erc20Abi, tsenderAbi } from "@/utils/constant";
 import { InputForm } from "./ui/InputForm";
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useChainId, useConfig, useWriteContract, useWaitForTransactionReceipt, } from 'wagmi'
+import { useAccount, useChainId, useConfig, useWriteContract } from 'wagmi'
 import { readContract } from '@wagmi/core';
 import { calculateTotal } from "@/utils/calculateTotal/calculateTotal";
 import { waitForTransactionReceipt } from "@wagmi/core"
@@ -20,7 +20,7 @@ export function AirDropForm() {
     const account = useAccount()
     const totalAmount = useMemo(() => calculateTotal(amounts), [amounts])
 
-    const { data: hash, isPending, error, writeContractAsync } = useWriteContract()
+    const { writeContractAsync } = useWriteContract()
 
     async function getAppovedAmount(tsenderAddress: string) {
         if (!tsenderAddress) {

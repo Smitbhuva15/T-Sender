@@ -1,4 +1,3 @@
-import { AirDropForm } from "@/components/AirDropForm";
 import { HomeContent } from "@/components/ui/HomeContent";
 import { Toaster } from "react-hot-toast";
 
