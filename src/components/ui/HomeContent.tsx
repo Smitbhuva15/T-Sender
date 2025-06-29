@@ -9,8 +9,6 @@ export function HomeContent() {
     return (
 
 
-
-        
         isConnected ?
             (
                 <div>
