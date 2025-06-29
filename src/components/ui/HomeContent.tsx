@@ -7,8 +7,6 @@ export function HomeContent() {
     const { isConnected } = useAccount()
 
     return (
-
-
         isConnected ?
             (
                 <div>
